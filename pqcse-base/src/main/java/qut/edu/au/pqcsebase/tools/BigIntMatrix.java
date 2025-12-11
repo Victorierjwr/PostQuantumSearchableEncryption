@@ -581,19 +581,41 @@ public class BigIntMatrix {
      * Uses the Euclidean norm of each column and returns the maximum.
      */
     public static BigInteger GSN_Length(BigIntMatrix matrix) {
-        // 伪代码
-        double maxLen = 0;
-        for (int j = 0; j < matrix.getColumnDimension(); j++) {
-            double colNormSq = 0;
-            for (int i = 0; i < matrix.getRowDimension(); i++) {
-                long val = matrix.get(i, j).longValue();
-                colNormSq += val * val;
-            }
-            double colNorm = Math.sqrt(colNormSq);
-            if (colNorm > maxLen) maxLen = colNorm;
-        }
+        BigInteger maxLen = BigInteger.ZERO;
 
-        return BigInteger.valueOf((long) maxLen);
+        for (int j = 0; j < matrix.getColumnDimension(); j++) {
+            // 使用 BigInteger sum of squares
+            BigInteger sumSq = BigInteger.ZERO;
+            for (int i = 0; i < matrix.getRowDimension(); i++) {
+                BigInteger val = matrix.get(i, j);
+                sumSq = sumSq.add(val.multiply(val));
+            }
+
+            BigInteger colNorm = sqrt(sumSq);
+
+            if (colNorm.compareTo(maxLen) > 0) {
+                maxLen = colNorm;
+            }
+        }
+        return maxLen;
+    }
+
+    /**
+     * Compute the integer square root of a BigInteger n.
+     * Uses binary search method.
+     */
+    private static BigInteger sqrt(BigInteger n) {
+        if (n.signum() < 0) throw new IllegalArgumentException("Negative argument.");
+        if (n.equals(BigInteger.ZERO) || n.equals(BigInteger.ONE)) return n;
+
+        BigInteger a = BigInteger.ONE;
+        BigInteger b = n.shiftRight(5).add(BigInteger.valueOf(8));
+        while (b.compareTo(a) >= 0) {
+            BigInteger mid = a.add(b).shiftRight(1);
+            if (mid.multiply(mid).compareTo(n) > 0) b = mid.subtract(BigInteger.ONE);
+            else a = mid.add(BigInteger.ONE);
+        }
+        return a.subtract(BigInteger.ONE);
     }
 
     /**

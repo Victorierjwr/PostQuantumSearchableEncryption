@@ -21,7 +21,7 @@ public class SampleD {
      * @param B The basis matrix of the lattice.Each row is a basis vector
      * @param s The Gaussian parameter.
      * @param c The center vector.
-     * @param n The dimension of the lattice.
+     * @param nParam The dimension of the lattice.
      * @return v sample from the discrete Gaussian distribution over the lattice.
      */
     public static BigInteger[] sampleD(BigIntMatrix B, double s, double[] c, long nParam) {
