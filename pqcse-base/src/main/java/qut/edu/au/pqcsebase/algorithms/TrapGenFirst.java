@@ -63,7 +63,7 @@ public class TrapGenFirst {
         this.q = BigInteger.valueOf(q);
 
         // Calculate parameters
-        this.m1 = (1 + delta) * (int) n * (int) (Math.log(q) / Math.log(2));
+        this.m1 = (int)Math.ceil(((1 + delta) *  n * (Math.log(q) / Math.log(2))));
         this.l = (int) Math.ceil(Math.log(q) / Math.log(r));
         this.m2 = l * m1;
         this.m = m1 + m2;

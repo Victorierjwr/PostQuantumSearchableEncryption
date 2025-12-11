@@ -466,6 +466,158 @@ public class BigIntMatrix {
         return r;
     }
 
+    /**
+     * Compute the determinant of matrix A using Bareiss algorithm (no modulo).
+     * More efficient and numerically stable than standard LU decomposition for integer matrices.
+     */
+    public static BigInteger determinant(BigIntMatrix A) {
+        int n = A.rows;
+        if (n != A.cols) throw new IllegalArgumentException("matrix must be square");
+        if (n == 0) return BigInteger.ZERO;
+        // 深拷贝原矩阵（不取模）
+        BigInteger[][] mat = new BigInteger[n][n];
+        for (int i = 0; i < n; i++) {
+            System.arraycopy(A.data[i], 0, mat[i], 0, n);
+        }
+
+        int sign = 1;
+        if (n == 1) {
+            return mat[0][0];
+        }
+
+        for (int k = 0; k < n - 1; k++) {
+            // 确保枢轴非零（必要时交换行）
+            if (mat[k][k].equals(BigInteger.ZERO)) {
+                int r = k + 1;
+                while (r < n && mat[r][k].equals(BigInteger.ZERO)) r++;
+                if (r == n) return BigInteger.ZERO; // 整体奇异
+                BigInteger[] tmp = mat[k];
+                mat[k] = mat[r];
+                mat[r] = tmp;
+                sign = -sign;
+            }
+            BigInteger pivot = mat[k][k];
+            BigInteger denom = (k == 0) ? BigInteger.ONE : mat[k - 1][k - 1];
+
+            // Bareiss 更新：保证整除
+            for (int i = k + 1; i < n; i++) {
+                for (int j = k + 1; j < n; j++) {
+                    BigInteger num = mat[i][j].multiply(pivot).subtract(mat[i][k].multiply(mat[k][j]));
+                    // 除法在 Bareiss 中应当是整除
+                    mat[i][j] = (denom.equals(BigInteger.ONE)) ? num : num.divide(denom);
+                }
+                mat[i][k] = BigInteger.ZERO;
+            }
+        }
+
+        BigInteger det = mat[n - 1][n - 1];
+        return (sign == -1) ? det.negate() : det;
+    }
+
+    /**
+     * Compute the determinant of matrix A modulo q using modified Gaussian elimination.
+     */
+    public static BigInteger determinantMod(BigIntMatrix A) {
+        int n = A.rows;
+        if (n != A.cols) throw new IllegalArgumentException("matrix must be square");
+        BigInteger q = A.q;
+        if (n == 0) return BigInteger.ZERO;
+
+        // 深拷贝并取模
+        BigInteger[][] m = new BigInteger[n][n];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                m[i][j] = A.data[i][j].mod(q);
+            }
+        }
+
+        BigInteger det = BigInteger.ONE;
+        int sign = 1;
+
+        for (int i = 0; i < n; i++) {
+            // 找到与 q 互质的枢轴行
+            int piv = i;
+            while (piv < n) {
+                BigInteger val = m[piv][i];
+                if (!val.equals(BigInteger.ZERO) && val.gcd(q).equals(BigInteger.ONE)) break;
+                piv++;
+            }
+            if (piv == n) {
+                // 若没有与 q 互质的枢轴，则行列式在模 q 下为 0
+                return BigInteger.ZERO;
+            }
+            if (piv != i) {
+                BigInteger[] tmp = m[i];
+                m[i] = m[piv];
+                m[piv] = tmp;
+                sign = -sign;
+            }
+
+            BigInteger pivot = m[i][i].mod(q);
+            det = det.multiply(pivot).mod(q);
+
+            // 规范化当前行（变为 1）并消去下面行
+            BigInteger invPivot = pivot.modInverse(q);
+            for (int j = i; j < n; j++) {
+                m[i][j] = m[i][j].multiply(invPivot).mod(q);
+            }
+            for (int r = i + 1; r < n; r++) {
+                BigInteger factor = m[r][i];
+                if (factor.equals(BigInteger.ZERO)) continue;
+                for (int c = i; c < n; c++) {
+                    m[r][c] = m[r][c].subtract(factor.multiply(m[i][c])).mod(q);
+                    if (m[r][c].signum() < 0) m[r][c] = m[r][c].add(q);
+                }
+            }
+        }
+
+        if (sign == -1) det = det.negate().mod(q);
+        return det.mod(q);
+    }
+
+    /**
+     * verfy ||S|| <= L
+     * Compute the GSN length of the basis represented by the columns of the matrix.
+     * Uses the Euclidean norm of each column and returns the maximum.
+     */
+    public static BigInteger GSN_Length(BigIntMatrix matrix) {
+        // 伪代码
+        double maxLen = 0;
+        for (int j = 0; j < matrix.getColumnDimension(); j++) {
+            double colNormSq = 0;
+            for (int i = 0; i < matrix.getRowDimension(); i++) {
+                long val = matrix.get(i, j).longValue();
+                colNormSq += val * val;
+            }
+            double colNorm = Math.sqrt(colNormSq);
+            if (colNorm > maxLen) maxLen = colNorm;
+        }
+
+        return BigInteger.valueOf((long) maxLen);
+    }
+
+    /**
+     * Helper: Multiply Matrix (rows x cols) by Vector (cols).
+     * Returns a vector of length 'rows'.
+     */
+    public static BigInteger[] multiplyMatrixVector(BigIntMatrix M, BigInteger[] v) {
+        int rows = M.getRowDimension();
+        int cols = M.getColumnDimension();
+        BigInteger q = M.getModulus();
+
+        if (v.length != cols) throw new IllegalArgumentException("Dimension mismatch");
+
+        BigInteger[] result = new BigInteger[rows];
+        for (int i = 0; i < rows; i++) {
+            BigInteger sum = BigInteger.ZERO;
+            for (int j = 0; j < cols; j++) {
+                sum = sum.add(M.get(i, j).multiply(v[j]));
+            }
+            result[i] = sum.mod(q);
+        }
+        return result;
+    }
+
 
     private void checkSameShape(BigIntMatrix other) {
         if (this.rows != other.rows || this.cols != other.cols) throw new IllegalArgumentException("Shape mismatch");
