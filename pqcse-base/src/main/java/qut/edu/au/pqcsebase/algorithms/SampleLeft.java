@@ -14,12 +14,12 @@ public class SampleLeft {
      * @param A  The left matrix (n x m1) which has a trapdoor.  [A|M1]e = u  n*(m1+m2) (m1+m2)*1 n*1
      * @param M1 The right matrix (n x m2) which is arbitrary/random.
      * @param TA the trapdoor of A
-     * @param s  Gaussian parameter
+     * @param sigma  Gaussian parameter
      * @param u  target vector (length n)
      * @param nParam security parameter
      * @return e e = [e1 ; e3] A short vector e = (e1, e2) such that A*e1 + M*e2 = u mod q.
      */
-    public static BigInteger[] sampleLeft(BigIntMatrix A, BigIntMatrix M1, BigIntMatrix TA, double s, BigInteger[] u, int nParam) {
+    public static BigInteger[] sampleLeft(BigIntMatrix A, BigIntMatrix M1, BigIntMatrix TA, double sigma, BigInteger[] u, int nParam) {
 
         int n = A.getRowDimension();
         int m_left = A.getColumnDimension();
@@ -29,7 +29,7 @@ public class SampleLeft {
         //1. sample the random part e2
         BigInteger[] e2 = new BigInteger[m_right];
         for (int i = 0; i < m_right; i++) {
-            e2[i] = sampleZ(s, 0.0, nParam);
+            e2[i] = sampleZ(sigma, 0.0, nParam);
         }
 
         //2. Compute the shifted target y = A*e1  v = M*e2 n*1
@@ -52,7 +52,7 @@ public class SampleLeft {
         }
 
         //3.Sample the trapdoor part e1  A*e1 = y  compute e1 use samplePre
-        BigInteger[] e1 = samplePre(A,TA,s,y);
+        BigInteger[] e1 = samplePre(A,TA,sigma,y);
 
         BigInteger[] e = new BigInteger[m_left + m_right];
         System.arraycopy(e1, 0, e, 0, m_left);

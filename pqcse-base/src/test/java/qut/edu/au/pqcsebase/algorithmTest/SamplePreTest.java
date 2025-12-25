@@ -1,7 +1,6 @@
 package qut.edu.au.pqcsebase.algorithmTest;
 
 import org.junit.Test;
-import qut.edu.au.pqcsebase.algorithms.SamplePre;
 import qut.edu.au.pqcsebase.tools.BigIntMatrix;
 
 import java.math.BigInteger;

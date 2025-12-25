@@ -8,6 +8,7 @@ import java.util.Arrays;
 import static qut.edu.au.pqcsebase.algorithms.SampleZ.sampleZ;
 
 /**
+ * Gaussian distribution
  * Implementation of Discrete Gaussian Sampling over Lattices (SampleD / Randomized Nearest Plane).
  * References: GPV08, AP11 papers.
  */
@@ -16,15 +17,16 @@ public class SampleD {
 
     /**
      * Sample from the discrete Gaussian distribution over the lattice defined by the basis B,
-     * with parameter s and center c.
+     * with parameter sigma and center c.
+     * also called SampleGaussian(A, S, \sigma, 0)$
      *
      * @param B The basis matrix of the lattice.Each row is a basis vector
-     * @param s The Gaussian parameter.
+     * @param sigma The Gaussian parameter.
      * @param c The center vector.
      * @param nParam The dimension of the lattice.
      * @return v sample from the discrete Gaussian distribution over the lattice.
      */
-    public static BigInteger[] sampleD(BigIntMatrix B, double s, double[] c, long nParam) {
+    public static BigInteger[] sampleD(BigIntMatrix B, double sigma, double[] c, long nParam) {
         int n = B.getColumnDimension();
         int m = B.getRowDimension();
 
@@ -40,6 +42,8 @@ public class SampleD {
         double[][] B_tilde = new double[n][m];
         //B_tilde[i]||^2
         double[] normsSq = new double[n];
+
+        //need long time
         computeGramSchmidt(B_double, B_tilde, normsSq);
 
         // Initialize v as zero vector
@@ -51,7 +55,7 @@ public class SampleD {
         for (int i = n - 1; i >= 0; i--) {
             // Compute mu_i = <c_current, B_tilde[i]> / ||B_tilde[i]||^2
             double c_prime = doProduct(c_current, B_tilde[i]) / normsSq[i];
-            double s_prime = s / Math.sqrt(normsSq[i]);
+            double s_prime = sigma / Math.sqrt(normsSq[i]);
 
             BigInteger z_i = sampleZ(s_prime, c_prime, nParam);
             double z_double = z_i.doubleValue();
@@ -77,7 +81,7 @@ public class SampleD {
      * @param B_tilde Output orthogonalized basis.
      * @param normsSq Output squared norms of orthogonal vectors.
      */
-    private static void computeGramSchmidt(double[][] B, double[][] B_tilde, double[] normsSq) {
+    public static void computeGramSchmidt(double[][] B, double[][] B_tilde, double[] normsSq) {
         int n = B.length;
         int m = B[0].length;
 
@@ -110,5 +114,46 @@ public class SampleD {
             sum += a[i] * b[i];
         }
         return sum;
+    }
+
+    /**
+     * Fast version of SampleD when GSO is precomputed.
+     *
+     * @param B_tilde     Precomputed orthogonalized basis.
+     * @param normsSq     Precomputed squared norms of orthogonal vectors.
+     * @param B_original  Original basis matrix.
+     * @param sigma           Gaussian parameter.
+     * @param c           Center vector.
+     * @param nParam      Security parameter.
+     * @return v Sample from the discrete Gaussian distribution over the lattice.
+     */
+    public static BigInteger[] sampleD_Fast(double[][] B_tilde, double[] normsSq, BigIntMatrix B_original, double sigma, double[] c, long nParam) {
+        int m = B_original.getRowDimension();
+        int n = B_original.getColumnDimension();
+
+        // 1. Initialization Phase
+        BigInteger[] v = new BigInteger[m];
+        Arrays.fill(v, BigInteger.ZERO);
+
+        double[] c_current = Arrays.copyOf(c, c.length);
+
+        for (int i = n - 1; i >= 0; i--) {
+            double c_prime = doProduct(c_current, B_tilde[i]) / normsSq[i];
+            double s_prime = sigma / Math.sqrt(normsSq[i]);
+
+            BigInteger z_i = sampleZ(s_prime, c_prime, nParam);
+            double z_double = z_i.doubleValue();
+
+            for (int k = 0; k < m; k++) {
+                double original_val = B_original.get(k, i).doubleValue();
+                c_current[k] = c_current[k] - z_double * original_val;
+            }
+
+            for (int k = 0; k < m; k++) {
+                BigInteger val = B_original.get(k, i).multiply(z_i);
+                v[k] = v[k].add(val);
+            }
+        }
+        return v;
     }
 }

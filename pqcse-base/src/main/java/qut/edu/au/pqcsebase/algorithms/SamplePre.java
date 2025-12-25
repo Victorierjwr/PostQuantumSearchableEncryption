@@ -17,11 +17,11 @@ public class SamplePre {
      *
      * @param A The matrix A (n x m).
      * @param B The trapdoor basis matrix for the lattice Lambda_perp(A). TrapGen need to inverse B = TA^T
-     * @param s The Gaussian parameter sigma.
+     * @param sigma The Gaussian parameter sigma.
      * @param u The target vector (length n).
      * @return A short vector v (length m) satisfying the equation.
      */
-    public static BigInteger[] samplePre(BigIntMatrix A, BigIntMatrix B, double s, BigInteger[] u) {
+    public static BigInteger[] samplePre(BigIntMatrix A, BigIntMatrix B, double sigma, BigInteger[] u) {
         int n = A.getRowDimension();
         int m = A.getColumnDimension();
         BigInteger q = A.getModulus();
@@ -40,8 +40,8 @@ public class SamplePre {
             c[i] = -t[i].doubleValue();
         }
 
-        // 3. discrete Gaussian sampling on the lattice: x ~ D_{Lambda_perp, s, -t}.
-        BigInteger[] x = sampleD(B, s, c, n);
+        // 3. discrete Gaussian sampling on the lattice: x ~ D_{Lambda_perp, sigma, -t}.
+        BigInteger[] x = sampleD(B, sigma, c, n);
 
         // 4. Compute the final result: v = x + t.
         BigInteger[] v = new BigInteger[m];
@@ -151,5 +151,71 @@ public class SamplePre {
         }
 
         return x;
+    }
+
+    /**
+     * Calculates the maximum length of the Gram-Schmidt orthogonalized vectors (||S~||).
+     * This value is crucial for determining the lower bound of the Gaussian parameter sigma.
+     *
+     * @param B The lattice basis matrix. **Assumes Column Basis** (each column is a vector).
+     * @return The maximum Euclidean norm of the orthogonalized basis vectors.
+     */
+    public static double computeGaussParam(BigIntMatrix B) {
+        int n = B.getColumnDimension(); // Number of basis vectors
+        int m = B.getRowDimension();    // Dimension of vectors
+
+        // 2. Extract data to double array for GSO computation
+        // B_double[i] represents the i-th basis vector (which is the i-th COLUMN of B)
+        double[][] B_double = new double[n][m];
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < m; j++) {
+                // Read the i-th column, j-th row
+                B_double[i][j] = B.get(j, i).doubleValue();
+            }
+        }
+
+        // 3. Perform Gram-Schmidt Orthogonalization
+        double[][] B_tilde = new double[n][m];
+        double[] normsSq = new double[n]; // Stores squared norms ||b_tilde_i||^2
+
+        for (int i = 0; i < n; i++) {
+            // Initialize: B_tilde[i] = B[i]
+            System.arraycopy(B_double[i], 0, B_tilde[i], 0, m);
+
+            // Subtract projections onto all previous orthogonal vectors
+            for (int j = 0; j < i; j++) {
+                // Compute dot product <B[i], B_tilde[j]>
+                double dotProd = 0;
+                for (int k = 0; k < m; k++) {
+                    dotProd += B_double[i][k] * B_tilde[j][k];
+                }
+
+                // coefficient = <B[i], B_tilde[j]> / ||B_tilde[j]||^2
+                double coef = dotProd / normsSq[j];
+
+                // B_tilde[i] = B_tilde[i] - coef * B_tilde[j]
+                for (int k = 0; k < m; k++) {
+                    B_tilde[i][k] -= coef * B_tilde[j][k];
+                }
+            }
+
+            // Compute and store the squared norm of the orthogonalized vector
+            double norm = 0;
+            for (int k = 0; k < m; k++) {
+                norm += B_tilde[i][k] * B_tilde[i][k];
+            }
+            normsSq[i] = norm;
+        }
+
+        // 4. Find the maximum squared norm
+        double maxNormSq = 0;
+        for (double val : normsSq) {
+            if (val > maxNormSq) {
+                maxNormSq = val;
+            }
+        }
+
+        // 5. Return the actual maximum length (Square Root)
+        return Math.sqrt(maxNormSq);
     }
 }

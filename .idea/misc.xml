@@ -6,6 +6,7 @@
       <list>
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/pqcse-base/pom.xml" />
+        <option value="$PROJECT_DIR$/pqcse-base-opt/pom.xml" />
       </list>
     </option>
   </component>

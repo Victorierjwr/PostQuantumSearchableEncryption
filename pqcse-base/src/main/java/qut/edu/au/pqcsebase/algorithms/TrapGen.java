@@ -68,7 +68,8 @@ public class TrapGen {
         BigIntMatrix x3 = BigIntMatrix.diagonal(m1, qBig, qBig);
 //        TGF.print("x3", x3);
 
-        BigIntMatrix beforeH = BigIntMatrix.columnConcat(x1_x2,x3.getSubMatrix(0, m1 - 1, m1 - (int)n , m1 - 1));
+//        BigIntMatrix beforeH = BigIntMatrix.columnConcat(x1_x2,x3.getSubMatrix(0, m1 - 1, m1 - (int)n , m1 - 1));
+        BigIntMatrix beforeH = BigIntMatrix.columnConcat(x1_x2, x3.getSubMatrix(0, m1 - 1, 0, (int)n - 1));
 //       TGF.print("beforeH", beforeH);
 
         BigIntMatrix H = TGF.genH(beforeH); // Returns BigIntMatrix, no overflow!

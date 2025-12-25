@@ -16,10 +16,10 @@ public class SampleRight {
      * @param R a matrix R k*m mod q  a random matrix in {1, -1} m*m
      * @param TB lattice B trapdoor basis m*m mod q
      * @param u target vector length n  n*1 mod q
-     * @param s Gaussian parameter
+     * @param sigma Gaussian parameter
      * @param nParam security parameter
      * @return e a short vector length m + k such that F2 = [A|AR + B]   F*e = u mod q  (m + k)*1     */
-    public static BigInteger[] sampleRight(BigIntMatrix A, BigIntMatrix B, BigIntMatrix R, BigIntMatrix TB, BigInteger[] u, double s, long nParam) {
+    public static BigInteger[] sampleRight(BigIntMatrix A, BigIntMatrix B, BigIntMatrix R, BigIntMatrix TB, BigInteger[] u, double sigma, long nParam) {
         int n = A.getRowDimension();
         int k = A.getColumnDimension();
         int m = B.getColumnDimension();
@@ -65,7 +65,7 @@ public class SampleRight {
             for (int row = 0; row < n; row++) {
                 y[row] = A.get(row, i).negate().mod(q);
             }
-            BigInteger[] u_i = samplePre(B, TB, s, y);
+            BigInteger[] u_i = samplePre(B, TB, sigma, y);
 
             // Top part: w_i - R * u_i
             BigInteger[] R_u_i = multiplyMatrixVector(R, u_i);
@@ -84,7 +84,7 @@ public class SampleRight {
         }
 
         //3 solution e F2*e = u mod q
-        return samplePre(F2, T_F2.transpose(), s, u);
+        return samplePre(F2, T_F2.transpose(), sigma, u);
     }
 
 }

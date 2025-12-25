@@ -72,19 +72,20 @@ public class LatticeHashUtils {
         BigIntMatrix matrix = new BigIntMatrix(m, m, q);
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            int elementCount = 0;
+            byte[] seedBytes = seed.getBytes(StandardCharsets.UTF_8);
 
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocate(seedBytes.length + 4);
+
+            int elementCount = 0;
             for (int i = 0; i < m; i++) {
                 for (int j = 0; j < m; j++) {
-                    // 构造独立的输入以保证每个元素不同但确定
-                    String inputForCell = seed + "||" + elementCount;
-                    byte[] hashBytes = digest.digest(inputForCell.getBytes(StandardCharsets.UTF_8));
+                    buffer.clear();
+                    buffer.put(seedBytes);
+                    buffer.putInt(elementCount); // 使用 putInt update 计数器，而非字符串拼接
 
+                    byte[] hashBytes = digest.digest(buffer.array());
                     BigInteger val = new BigInteger(1, hashBytes).mod(this.q);
-
-                    // 使用 BigIntMatrix 的 setter
                     matrix.set(i, j, val);
-
                     elementCount++;
                 }
             }

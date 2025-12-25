@@ -5,6 +5,7 @@ import lombok.Getter;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.stream.IntStream;
 
 /**
  * BigInteger Matrix Wrapper supporting modular arithmetic (mod q).
@@ -154,15 +155,18 @@ public class BigIntMatrix {
         if (!this.q.equals(other.q)) throw new IllegalArgumentException("Moduli mismatch");
 
         BigIntMatrix res = new BigIntMatrix(this.rows, other.cols, q);
-        for (int i = 0; i < this.rows; i++) {
+
+        // 使用 parallelStream 并行计算每一行
+        IntStream.range(0, this.rows).parallel().forEach(i -> {
             for (int j = 0; j < other.cols; j++) {
                 BigInteger sum = BigInteger.ZERO;
                 for (int k = 0; k < this.cols; k++) {
+
                     sum = sum.add(this.data[i][k].multiply(other.data[k][j]));
                 }
                 res.data[i][j] = sum.mod(q);
             }
-        }
+        });
         return res;
     }
 
@@ -208,7 +212,8 @@ public class BigIntMatrix {
     }
 
     // --- Static Tools ---
-
+    /** Validate same shape
+     */
     public static BigIntMatrix rowConcat(BigIntMatrix A, BigIntMatrix B) {
         if (A.cols != B.cols) throw new IllegalArgumentException("Cols must match");
         BigIntMatrix res = new BigIntMatrix(A.rows + B.rows, A.cols, A.q);
@@ -217,6 +222,8 @@ public class BigIntMatrix {
         return res;
     }
 
+    /** Column concatenation: [A ; B]
+     */
     public static BigIntMatrix columnConcat(BigIntMatrix A, BigIntMatrix B) {
         if (A.rows != B.rows) throw new IllegalArgumentException("Rows must match");
         BigIntMatrix res = new BigIntMatrix(A.rows, A.cols + B.cols, A.q);
@@ -467,6 +474,67 @@ public class BigIntMatrix {
     }
 
     /**
+     * Compute the rank of the matrix modulo a prime p.
+     * Much faster and avoids OutOfMemoryError compared to integer Gaussian elimination.
+     * default BigInteger primeP = BigInteger.valueOf(1000000007);
+     */
+    public static int gaussMod(BigIntMatrix A,BigInteger primeP) {
+        BigInteger p = BigInteger.valueOf(1000000007);
+        if (!primeP.equals(BigInteger.ZERO)) p = primeP;
+        int rows = A.getRowDimension();
+        int cols = A.getColumnDimension();
+
+        BigInteger[][] mat = new BigInteger[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                mat[i][j] = A.get(i, j).mod(p);
+            }
+        }
+
+        int rank = 0;
+        int[] pivotRow = new int[cols];
+        java.util.Arrays.fill(pivotRow, -1);
+
+        for (int j = 0; j < cols && rank < rows; j++) {
+            int sel = -1;
+            for (int i = rank; i < rows; i++) {
+                if (!mat[i][j].equals(BigInteger.ZERO)) {
+                    sel = i;
+                    break;
+                }
+            }
+
+            if (sel == -1) {
+                continue; //all zero column, skip
+            }
+
+            // 2. 交换行 (Swap)
+            if (sel != rank) {
+                BigInteger[] temp = mat[rank];
+                mat[rank] = mat[sel];
+                mat[sel] = temp;
+            }
+
+            BigInteger inv = mat[rank][j].modInverse(p);
+
+            for (int i = 0; i < rows; i++) {
+                if (i != rank && !mat[i][j].equals(BigInteger.ZERO)) {
+                    // factor = mat[i][j] * inv mod p
+                    BigInteger factor = mat[i][j].multiply(inv).mod(p);
+                    for (int k = j; k < cols; k++) {
+                        // mat[i][k] = mat[i][k] - factor * mat[rank][k]
+                        BigInteger sub = factor.multiply(mat[rank][k]).mod(p);
+                        mat[i][k] = mat[i][k].subtract(sub).mod(p);
+                        if (mat[i][k].signum() < 0) mat[i][k] = mat[i][k].add(p);
+                    }
+                }
+            }
+            rank++;
+        }
+        return rank;
+    }
+
+    /**
      * Compute the determinant of matrix A using Bareiss algorithm (no modulo).
      * More efficient and numerically stable than standard LU decomposition for integer matrices.
      */
@@ -638,6 +706,48 @@ public class BigIntMatrix {
             result[i] = sum.mod(q);
         }
         return result;
+    }
+
+    /**
+     * Swap two columns at indices i and j.
+     * @param i Index of the first column.
+     * @param j Index of the second column.
+     */
+    public void swapCols(int i, int j) {
+        for (int k = 0; k < this.rows; k++) {
+            BigInteger temp = this.data[k][i];
+            this.data[k][i] = this.data[k][j];
+            this.data[k][j] = temp;
+        }
+    }
+
+    /**
+     * Subtract a multiple of column j from column i.
+     * Operation: Col_i = Col_i - factor * Col_j
+     *
+     * @param i      Target column index.
+     * @param j      Source column index.
+     * @param factor The integer multiplier.
+     */
+    public void colSub(int i, int j, BigInteger factor) {
+        for (int k = 0; k < this.rows; k++) {
+            BigInteger val = this.data[k][j].multiply(factor);
+            this.data[k][i] = this.data[k][i].subtract(val);
+        }
+    }
+
+    /**
+     * Creates a deep copy of the matrix.
+     * @return A new BigIntMatrix instance with copied data.
+     */
+    public BigIntMatrix copy() {
+        BigIntMatrix newMat = new BigIntMatrix(this.rows, this.cols, this.q);
+        for (int i = 0; i < this.rows; i++) {
+            for (int j = 0; j < this.cols; j++) {
+                newMat.set(i, j, this.data[i][j]);
+            }
+        }
+        return newMat;
     }
 
 

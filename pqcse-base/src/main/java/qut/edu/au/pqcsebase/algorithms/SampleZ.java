@@ -8,15 +8,14 @@ public class SampleZ {
     private static SecureRandom random = new SecureRandom();
 
     /**
-     * Sample z from discrete Gaussian distribution D_{Z, s, c}
+     * Sample z from discrete Gaussian distribution D_{Z, sigma, c}
      *
-     * @param s standard deviation s = n^c
+     * @param sigma standard deviation sigma = n^c
      * @param c center c > 0
      * @param n dimension
      * @return sampled integer x
      */
-    public static BigInteger sampleZ(double s, double c, long n) {
-        BigInteger x;
+    public static BigInteger sampleZ(double sigma, double c, long n) {
 
 //        double log2n = Math.log(n) / Math.log(2);
 //        double t = Math.sqrt(log2n);
@@ -24,7 +23,7 @@ public class SampleZ {
         // t(n) = log2(n)
         double t = Math.log(n) / Math.log(2);
 
-        double z = s * t;
+        double z = sigma * t;
         double f = c - z; // 下界 (float)
         double b = c + z; // 上界 (float)
 
@@ -41,9 +40,9 @@ public class SampleZ {
 
             double dist = y - c;               // (x - c)
             double top = Math.PI * dist * dist; // π * (x - c)^2
-            double bottom = s * s;             // s^2
-            double g = top / bottom;           // π(x-c)^2 / s^2
-            double prob = Math.exp(-g);        // exp( - π(x-c)^2 / s^2 )
+            double bottom = sigma * sigma;             // sigma^2
+            double g = top / bottom;           // π(x-c)^2 / sigma^2
+            double prob = Math.exp(-g);        // exp( - π(x-c)^2 / sigma^2 )
 
             if (random.nextDouble() < prob) {
                 return BigInteger.valueOf(y);
